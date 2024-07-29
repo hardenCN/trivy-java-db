@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/aquasecurity/trivy-java-db/pkg/crawler"
+	"github.com/hardenCN/trivy-java-db/pkg/crawler"
 )
 
 func TestCrawl(t *testing.T) {

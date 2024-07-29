@@ -1,6 +1,6 @@
 package crawler
 
-import "github.com/aquasecurity/trivy-java-db/pkg/types"
+import "github.com/hardenCN/trivy-java-db/pkg/types"
 
 type Metadata struct {
 	GroupID    string     `xml:"groupId"`

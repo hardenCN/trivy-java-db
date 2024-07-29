@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/xerrors"
 
-	"github.com/aquasecurity/trivy-java-db/pkg/builder"
-	"github.com/aquasecurity/trivy-java-db/pkg/crawler"
-	"github.com/aquasecurity/trivy-java-db/pkg/db"
+	"github.com/hardenCN/trivy-java-db/pkg/builder"
+	"github.com/hardenCN/trivy-java-db/pkg/crawler"
+	"github.com/hardenCN/trivy-java-db/pkg/db"
 
 	_ "modernc.org/sqlite"
 )

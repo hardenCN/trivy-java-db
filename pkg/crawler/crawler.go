@@ -19,8 +19,8 @@ import (
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/xerrors"
 
-	"github.com/aquasecurity/trivy-java-db/pkg/fileutil"
-	"github.com/aquasecurity/trivy-java-db/pkg/types"
+	"github.com/hardenCN/trivy-java-db/pkg/fileutil"
+	"github.com/hardenCN/trivy-java-db/pkg/types"
 )
 
 const mavenRepoURL = "https://repo.maven.apache.org/maven2/"

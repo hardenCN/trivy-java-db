@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/aquasecurity/trivy-java-db/pkg/types"
+	"github.com/hardenCN/trivy-java-db/pkg/types"
 )
 
 const (

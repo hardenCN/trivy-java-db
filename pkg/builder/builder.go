@@ -11,10 +11,10 @@ import (
 	"golang.org/x/xerrors"
 	"k8s.io/utils/clock"
 
-	"github.com/aquasecurity/trivy-java-db/pkg/crawler"
-	"github.com/aquasecurity/trivy-java-db/pkg/db"
-	"github.com/aquasecurity/trivy-java-db/pkg/fileutil"
-	"github.com/aquasecurity/trivy-java-db/pkg/types"
+	"github.com/hardenCN/trivy-java-db/pkg/crawler"
+	"github.com/hardenCN/trivy-java-db/pkg/db"
+	"github.com/hardenCN/trivy-java-db/pkg/fileutil"
+	"github.com/hardenCN/trivy-java-db/pkg/types"
 )
 
 const updateInterval = time.Hour * 72 // 3 days
