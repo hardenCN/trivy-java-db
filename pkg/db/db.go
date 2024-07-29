@@ -19,8 +19,8 @@ const (
 )
 
 type DB struct {
-	client *sql.DB
-	dir    string
+	Client *sql.DB
+	DBDir  string
 }
 
 func path(cacheDir string) string {
@@ -50,44 +50,44 @@ func New(cacheDir string) (DB, error) {
 	}
 
 	return DB{
-		client: db,
-		dir:    dbDir,
+		Client: db,
+		DBDir:  dbDir,
 	}, nil
 }
 
 func (db *DB) Init() error {
-	if _, err := db.client.Exec("CREATE TABLE artifacts(id INTEGER PRIMARY KEY, group_id TEXT, artifact_id TEXT)"); err != nil {
+	if _, err := db.Client.Exec("CREATE TABLE artifacts(id INTEGER PRIMARY KEY, group_id TEXT, artifact_id TEXT)"); err != nil {
 		return xerrors.Errorf("unable to create 'artifacts' table: %w", err)
 	}
-	if _, err := db.client.Exec("CREATE TABLE indices(artifact_id INTEGER, version TEXT, sha1 BLOB, archive_type TEXT, foreign key (artifact_id) references artifacts(id))"); err != nil {
+	if _, err := db.Client.Exec("CREATE TABLE indices(artifact_id INTEGER, version TEXT, sha1 BLOB, archive_type TEXT, foreign key (artifact_id) references artifacts(id))"); err != nil {
 		return xerrors.Errorf("unable to create 'indices' table: %w", err)
 	}
 
-	if _, err := db.client.Exec("CREATE UNIQUE INDEX artifacts_idx ON artifacts(artifact_id, group_id)"); err != nil {
+	if _, err := db.Client.Exec("CREATE UNIQUE INDEX artifacts_idx ON artifacts(artifact_id, group_id)"); err != nil {
 		return xerrors.Errorf("unable to create 'artifacts_idx' index: %w", err)
 	}
-	if _, err := db.client.Exec("CREATE INDEX indices_artifact_idx ON indices(artifact_id)"); err != nil {
+	if _, err := db.Client.Exec("CREATE INDEX indices_artifact_idx ON indices(artifact_id)"); err != nil {
 		return xerrors.Errorf("unable to create 'indices_artifact_idx' index: %w", err)
 	}
-	if _, err := db.client.Exec("CREATE UNIQUE INDEX indices_sha1_idx ON indices(sha1)"); err != nil {
+	if _, err := db.Client.Exec("CREATE UNIQUE INDEX indices_sha1_idx ON indices(sha1)"); err != nil {
 		return xerrors.Errorf("unable to create 'indices_sha1_idx' index: %w", err)
 	}
 	return nil
 }
 
 func (db *DB) Dir() string {
-	return db.dir
+	return db.DBDir
 }
 
 func (db *DB) VacuumDB() error {
-	if _, err := db.client.Exec("VACUUM"); err != nil {
+	if _, err := db.Client.Exec("VACUUM"); err != nil {
 		return xerrors.Errorf("vacuum database error: %w", err)
 	}
 	return nil
 }
 
 func (db *DB) Close() error {
-	return db.client.Close()
+	return db.Client.Close()
 }
 
 //////////////////////////////////////
@@ -98,7 +98,7 @@ func (db *DB) InsertIndexes(indexes []types.Index) error {
 	if len(indexes) == 0 {
 		return nil
 	}
-	tx, err := db.client.Begin()
+	tx, err := db.Client.Begin()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (db *DB) SelectIndexBySha1(sha1 string) (types.Index, error) {
 	if err != nil {
 		return index, xerrors.Errorf("sha1 decode error: %w", err)
 	}
-	row := db.client.QueryRow(`
+	row := db.Client.QueryRow(`
 		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type 
 		FROM indices i
 		JOIN artifacts a ON a.id = i.artifact_id
@@ -161,7 +161,7 @@ func (db *DB) SelectIndexBySha1(sha1 string) (types.Index, error) {
 
 func (db *DB) SelectIndexByArtifactIDAndGroupID(artifactID, groupID string) (types.Index, error) {
 	var index types.Index
-	row := db.client.QueryRow(`
+	row := db.Client.QueryRow(`
 		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type
 		FROM indices i 
 		JOIN artifacts a ON a.id = i.artifact_id
@@ -177,7 +177,7 @@ func (db *DB) SelectIndexByArtifactIDAndGroupID(artifactID, groupID string) (typ
 // SelectIndexesByArtifactIDAndFileType returns all indexes for `artifactID` + `fileType` if `version` exists for them
 func (db *DB) SelectIndexesByArtifactIDAndFileType(artifactID, version string, fileType types.ArchiveType) ([]types.Index, error) {
 	var indexes []types.Index
-	rows, err := db.client.Query(`
+	rows, err := db.Client.Query(`
 		SELECT f_id.group_id, f_id.artifact_id, i.version, i.sha1, i.archive_type
 		FROM indices i
 		JOIN (SELECT a.id, a.group_id, a.artifact_id
