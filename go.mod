@@ -1,4 +1,4 @@
-module github.com/aquasecurity/trivy-java-db
+module github.com/hardenCN/trivy-java-db
 
 go 1.18
 
