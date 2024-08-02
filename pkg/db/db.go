@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"golang.org/x/xerrors"
@@ -141,17 +142,33 @@ func (db *DB) insertArtifacts(tx *sql.Tx, indexes []types.Index) error {
 }
 
 func (db *DB) SelectIndexBySha1(sha1 string) (types.Index, error) {
+	var exeSql string
+	switch driverName(db.Client) {
+	case "*stdlib.Driver":
+		exeSql = `
+		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type 
+		FROM indices i
+		JOIN artifacts a ON a.id = i.artifact_id
+        WHERE i.sha1 = $1`
+	case "*godror.drv":
+		exeSql = `
+		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type 
+		FROM indices i
+		JOIN artifacts a ON a.id = i.artifact_id
+        WHERE i.sha1 = :1`
+	default:
+		exeSql = `
+		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type 
+		FROM indices i
+		JOIN artifacts a ON a.id = i.artifact_id
+        WHERE i.sha1 = ?`
+	}
 	var index types.Index
 	sha1b, err := hex.DecodeString(sha1)
 	if err != nil {
 		return index, xerrors.Errorf("sha1 decode error: %w", err)
 	}
-	row := db.Client.QueryRow(`
-		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type 
-		FROM indices i
-		JOIN artifacts a ON a.id = i.artifact_id
-        WHERE i.sha1 = ?`,
-		sha1b)
+	row := db.Client.QueryRow(exeSql, sha1b)
 	err = row.Scan(&index.GroupID, &index.ArtifactID, &index.Version, &index.SHA1, &index.ArchiveType)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return index, xerrors.Errorf("select index error: %w", err)
@@ -160,13 +177,29 @@ func (db *DB) SelectIndexBySha1(sha1 string) (types.Index, error) {
 }
 
 func (db *DB) SelectIndexByArtifactIDAndGroupID(artifactID, groupID string) (types.Index, error) {
-	var index types.Index
-	row := db.Client.QueryRow(`
+	var exeSql string
+	switch driverName(db.Client) {
+	case "*stdlib.Driver":
+		exeSql = `
 		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type
 		FROM indices i 
 		JOIN artifacts a ON a.id = i.artifact_id
-        WHERE a.group_id = ? AND a.artifact_id = ?`,
-		groupID, artifactID)
+        WHERE a.group_id = $1 AND a.artifact_id = $2`
+	case "*godror.drv":
+		exeSql = `
+		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type
+		FROM indices i 
+		JOIN artifacts a ON a.id = i.artifact_id
+        WHERE a.group_id = :1 AND a.artifact_id = :2`
+	default:
+		exeSql = `
+		SELECT a.group_id, a.artifact_id, i.version, i.sha1, i.archive_type
+		FROM indices i 
+		JOIN artifacts a ON a.id = i.artifact_id
+        WHERE a.group_id = ? AND a.artifact_id = ?`
+	}
+	var index types.Index
+	row := db.Client.QueryRow(exeSql, groupID, artifactID)
 	err := row.Scan(&index.GroupID, &index.ArtifactID, &index.Version, &index.SHA1, &index.ArchiveType)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return index, xerrors.Errorf("select index error: %w", err)
@@ -176,15 +209,35 @@ func (db *DB) SelectIndexByArtifactIDAndGroupID(artifactID, groupID string) (typ
 
 // SelectIndexesByArtifactIDAndFileType returns all indexes for `artifactID` + `fileType` if `version` exists for them
 func (db *DB) SelectIndexesByArtifactIDAndFileType(artifactID, version string, fileType types.ArchiveType) ([]types.Index, error) {
-	var indexes []types.Index
-	rows, err := db.Client.Query(`
+	var exeSql string
+	switch driverName(db.Client) {
+	case "*stdlib.Driver":
+		exeSql = `
 		SELECT f_id.group_id, f_id.artifact_id, i.version, i.sha1, i.archive_type
 		FROM indices i
 		JOIN (SELECT a.id, a.group_id, a.artifact_id
       	      FROM indices i
         	  JOIN artifacts a on a.id = i.artifact_id
-      	      WHERE a.artifact_id = ? AND i.version = ? AND i.archive_type = ?) f_id ON f_id.id = i.artifact_id`,
-		artifactID, version, fileType)
+      	      WHERE a.artifact_id = $1 AND i.version = $2 AND i.archive_type = $3) f_id ON f_id.id = i.artifact_id`
+	case "*godror.drv":
+		exeSql = `
+		SELECT f_id.group_id, f_id.artifact_id, i.version, i.sha1, i.archive_type
+		FROM indices i
+		JOIN (SELECT a.id, a.group_id, a.artifact_id
+      	      FROM indices i
+        	  JOIN artifacts a on a.id = i.artifact_id
+      	      WHERE a.artifact_id = :1 AND i.version = :2 AND i.archive_type = :3) f_id ON f_id.id = i.artifact_id`
+	default:
+		exeSql = `
+		SELECT f_id.group_id, f_id.artifact_id, i.version, i.sha1, i.archive_type
+		FROM indices i
+		JOIN (SELECT a.id, a.group_id, a.artifact_id
+      	      FROM indices i
+        	  JOIN artifacts a on a.id = i.artifact_id
+      	      WHERE a.artifact_id = ? AND i.version = ? AND i.archive_type = ?) f_id ON f_id.id = i.artifact_id`
+	}
+	var indexes []types.Index
+	rows, err := db.Client.Query(exeSql, artifactID, version, fileType)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, xerrors.Errorf("select indexes error: %w", err)
 	}
@@ -196,4 +249,10 @@ func (db *DB) SelectIndexesByArtifactIDAndFileType(artifactID, version string, f
 		indexes = append(indexes, index)
 	}
 	return indexes, nil
+}
+
+func driverName(sqldb *sql.DB) string {
+	driver := sqldb.Driver()
+	a := reflect.TypeOf(driver)
+	return a.String()
 }
